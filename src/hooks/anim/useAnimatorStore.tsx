@@ -8,8 +8,8 @@ import { subscribeWithSelector } from "zustand/middleware";
  * 2. Transition between animation
  */
 
-export interface AnimationState {
-  state: string;
+export interface AnimationState<T> {
+  state: T;
 
   prefixDelay: number;
   postfixDelay: number;
@@ -17,19 +17,56 @@ export interface AnimationState {
   duration: number;
 }
 
-interface AnimatorStore {
-  state: Record<string, boolean>;
+interface AnimatorStore<T extends string> {
+  state: Record<T, boolean>;
 
-  setState: (key: string, value: boolean) => void;
+  stateMap: Map<T, AnimationState<T>>;
+
+  // Store initState for future reset
+  init: (possibleStates: Array<AnimationState<T>>) => void;
+
+  setState: (key: T, value: boolean) => void;
+
+  reset: () => void;
 }
 
-export const useAnimatorStore = create<AnimatorStore>()(
-  subscribeWithSelector((set) => ({
-    state: {},
-    setState: (key, value) =>
-      set((state) => ({
-        ...state,
-        [key]: value,
-      })),
-  })),
-);
+export const useAnimatorStore = <T extends string>() =>
+  create<AnimatorStore<T>>()(
+    subscribeWithSelector((set) => ({
+      state: {} as Record<T, boolean>,
+      stateMap: new Map<T, AnimationState<T>>(),
+
+      init: (possibleStates) => {
+        const stateMap = new Map<T, AnimationState<T>>();
+        const animatorState = {} as Record<T, boolean>;
+
+        for (const state of possibleStates) {
+          stateMap.set(state.state, state);
+          animatorState[state.state] = false;
+        }
+
+        set(() => ({
+          state: animatorState,
+          stateMap,
+        }));
+      },
+
+      setState: (key, value) => {
+        set((state) => ({
+          ...state,
+          [key]: value,
+        }));
+      },
+
+      reset: () => {
+        set((state) => {
+          for (const key in state.state) {
+            state.state[key] = false;
+          }
+          return {
+            state: { ...state.state },
+          };
+        });
+      },
+    })),
+  )();
