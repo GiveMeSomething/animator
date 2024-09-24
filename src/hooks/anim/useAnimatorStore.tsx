@@ -8,23 +8,13 @@ import { subscribeWithSelector } from "zustand/middleware";
  * 2. Transition between animation
  */
 
-export interface AnimationState<T> {
-  state: T;
-
-  prefixDelay: number;
-  postfixDelay: number;
-
-  duration: number;
-}
-
 interface AnimatorStore<T extends string> {
   state: Record<T, boolean>;
 
-  stateMap: Map<T, AnimationState<T>>;
-
   // Store initState for future reset
-  init: (possibleStates: Array<AnimationState<T>>) => void;
+  init: (possibleStates: Array<T>) => void;
 
+  // Force the animator to a specific state
   setState: (key: T, value: boolean) => void;
 
   reset: () => void;
@@ -34,20 +24,15 @@ export const useAnimatorStore = <T extends string>() =>
   create<AnimatorStore<T>>()(
     subscribeWithSelector((set) => ({
       state: {} as Record<T, boolean>,
-      stateMap: new Map<T, AnimationState<T>>(),
 
       init: (possibleStates) => {
-        const stateMap = new Map<T, AnimationState<T>>();
         const animatorState = {} as Record<T, boolean>;
-
         for (const state of possibleStates) {
-          stateMap.set(state.state, state);
-          animatorState[state.state] = false;
+          animatorState[state] = false;
         }
 
         set(() => ({
           state: animatorState,
-          stateMap,
         }));
       },
 
